@@ -18,6 +18,18 @@ namespace Pomoku.Core
         private HandManager handManager;
         private BoardView boardView;
         private HandView handView;
+        private CardData selectedCardData;
+        private bool hasSelectedCard;
+
+        public bool HasSelectedCard
+        {
+            get { return hasSelectedCard; }
+        }
+
+        public CardData SelectedCardData
+        {
+            get { return selectedCardData; }
+        }
 
         public void StartLocalGame()
         {
@@ -55,7 +67,15 @@ namespace Pomoku.Core
         private void ShowCurrentPlayerHand()
         {
             IReadOnlyList<CardData> currentPlayerHand = handManager.GetPlayerHand(CurrentPlayerIndex);
-            handView.ShowCurrentPlayerHand(CurrentPlayerIndex, currentPlayerHand);
+            handView.ShowCurrentPlayerHand(CurrentPlayerIndex, currentPlayerHand, SelectCurrentPlayerCard);
+        }
+
+        private void SelectCurrentPlayerCard(CardData cardData)
+        {
+            selectedCardData = cardData;
+            hasSelectedCard = true;
+
+            Debug.Log("Selected Card: " + selectedCardData.GetDisplayName());
         }
 
         private void LogLocalGameStartState()

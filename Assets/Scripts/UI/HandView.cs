@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using Pomoku.Cards;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace Pomoku.UI
@@ -9,15 +12,32 @@ namespace Pomoku.UI
     {
         private Canvas canvas;
         private RectTransform handPanel;
-        private Text handText;
+        private RectTransform cardsPanel;
+        private Text playerLabelText;
         private Font labelFont;
+        private CardView selectedCardView;
+        private Action<CardData> cardSelected;
 
-        public void ShowCurrentPlayerHand(int playerIndex, IReadOnlyList<CardData> handCards)
+        public void ShowCurrentPlayerHand(int playerIndex, IReadOnlyList<CardData> handCards, Action<CardData> onCardSelected)
         {
+            cardSelected = onCardSelected;
+            selectedCardView = null;
+
             EnsureCanvas();
             EnsureHandPanel();
+            ClearCardViews();
 
-            handText.text = "Player " + (playerIndex + 1) + " Hand: " + FormatHandCards(handCards);
+            playerLabelText.text = "Player " + (playerIndex + 1) + " Hand";
+
+            if (handCards == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < handCards.Count; i++)
+            {
+                CreateCardView(handCards[i], i);
+            }
         }
 
         private void EnsureCanvas()
@@ -36,6 +56,20 @@ namespace Pomoku.UI
             canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             canvasScaler.referenceResolution = new Vector2(1920f, 1080f);
             canvasScaler.matchWidthOrHeight = 0.5f;
+
+            EnsureEventSystem();
+        }
+
+        private void EnsureEventSystem()
+        {
+            if (EventSystem.current != null)
+            {
+                return;
+            }
+
+            GameObject eventSystemObject = new GameObject("PomokuEventSystem", typeof(EventSystem));
+            InputSystemUIInputModule inputModule = eventSystemObject.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
         }
 
         private void EnsureHandPanel()
@@ -53,47 +87,81 @@ namespace Pomoku.UI
             handPanel.anchorMax = new Vector2(0.5f, 0f);
             handPanel.pivot = new Vector2(0.5f, 0f);
             handPanel.anchoredPosition = new Vector2(0f, 28f);
-            handPanel.sizeDelta = new Vector2(1100f, 70f);
+            handPanel.sizeDelta = new Vector2(1100f, 170f);
 
             Image panelImage = panelObject.GetComponent<Image>();
             panelImage.color = new Color(0.08f, 0.10f, 0.12f, 0.88f);
             panelImage.raycastTarget = false;
 
-            GameObject textObject = new GameObject("CurrentPlayerHandText", typeof(RectTransform), typeof(Text));
-            textObject.transform.SetParent(handPanel, false);
+            GameObject labelObject = new GameObject("CurrentPlayerLabelText", typeof(RectTransform), typeof(Text));
+            labelObject.transform.SetParent(handPanel, false);
 
-            RectTransform textRectTransform = textObject.GetComponent<RectTransform>();
-            textRectTransform.anchorMin = Vector2.zero;
-            textRectTransform.anchorMax = Vector2.one;
-            textRectTransform.offsetMin = new Vector2(18f, 8f);
-            textRectTransform.offsetMax = new Vector2(-18f, -8f);
+            RectTransform labelRectTransform = labelObject.GetComponent<RectTransform>();
+            labelRectTransform.anchorMin = new Vector2(0f, 1f);
+            labelRectTransform.anchorMax = new Vector2(1f, 1f);
+            labelRectTransform.pivot = new Vector2(0.5f, 1f);
+            labelRectTransform.anchoredPosition = new Vector2(0f, -8f);
+            labelRectTransform.sizeDelta = new Vector2(0f, 32f);
 
-            handText = textObject.GetComponent<Text>();
-            handText.font = GetLabelFont();
-            handText.fontSize = 24;
-            handText.alignment = TextAnchor.MiddleCenter;
-            handText.color = Color.white;
-            handText.raycastTarget = false;
-            handText.resizeTextForBestFit = true;
-            handText.resizeTextMinSize = 12;
-            handText.resizeTextMaxSize = 24;
+            playerLabelText = labelObject.GetComponent<Text>();
+            playerLabelText.font = GetLabelFont();
+            playerLabelText.fontSize = 22;
+            playerLabelText.alignment = TextAnchor.MiddleCenter;
+            playerLabelText.color = Color.white;
+            playerLabelText.raycastTarget = false;
+
+            GameObject cardsPanelObject = new GameObject("CurrentPlayerCardsPanel", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            cardsPanelObject.transform.SetParent(handPanel, false);
+
+            cardsPanel = cardsPanelObject.GetComponent<RectTransform>();
+            cardsPanel.anchorMin = new Vector2(0f, 0f);
+            cardsPanel.anchorMax = new Vector2(1f, 1f);
+            cardsPanel.offsetMin = new Vector2(32f, 18f);
+            cardsPanel.offsetMax = new Vector2(-32f, -48f);
+
+            HorizontalLayoutGroup horizontalLayoutGroup = cardsPanelObject.GetComponent<HorizontalLayoutGroup>();
+            horizontalLayoutGroup.childAlignment = TextAnchor.MiddleCenter;
+            horizontalLayoutGroup.spacing = 14f;
+            horizontalLayoutGroup.childControlWidth = false;
+            horizontalLayoutGroup.childControlHeight = false;
+            horizontalLayoutGroup.childForceExpandWidth = false;
+            horizontalLayoutGroup.childForceExpandHeight = false;
         }
 
-        private string FormatHandCards(IReadOnlyList<CardData> handCards)
+        private void ClearCardViews()
         {
-            if (handCards == null || handCards.Count == 0)
+            for (int i = cardsPanel.childCount - 1; i >= 0; i--)
             {
-                return "(empty)";
+                Destroy(cardsPanel.GetChild(i).gameObject);
+            }
+        }
+
+        private void CreateCardView(CardData cardData, int cardIndex)
+        {
+            GameObject cardObject = new GameObject("Card_" + cardIndex, typeof(RectTransform), typeof(Image), typeof(Button), typeof(CardView));
+            cardObject.transform.SetParent(cardsPanel, false);
+
+            RectTransform cardRectTransform = cardObject.GetComponent<RectTransform>();
+            cardRectTransform.sizeDelta = new Vector2(120f, 86f);
+
+            CardView cardView = cardObject.GetComponent<CardView>();
+            cardView.SetCardData(cardData, GetLabelFont(), SelectCardView);
+        }
+
+        private void SelectCardView(CardView cardView, CardData cardData)
+        {
+            if (selectedCardView != null)
+            {
+                selectedCardView.SetSelected(false);
             }
 
-            List<string> cardNames = new List<string>();
+            selectedCardView = cardView;
+            selectedCardView.SetSelected(true);
 
-            for (int i = 0; i < handCards.Count; i++)
+            if (cardSelected != null)
             {
-                cardNames.Add(handCards[i].GetDisplayName());
+                cardSelected(cardData);
             }
-
-            return string.Join(", ", cardNames);
         }
 
         private Font GetLabelFont()
