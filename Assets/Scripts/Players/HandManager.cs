@@ -58,5 +58,49 @@ namespace Pomoku.Players
 
             return playerHands[playerIndex];
         }
+
+        public bool RemoveFirstMatchingCardFromHand(int playerIndex, CardData cardToRemove)
+        {
+            if (!IsValidPlayerIndex(playerIndex))
+            {
+                return false;
+            }
+
+            List<CardData> playerHand = playerHands[playerIndex];
+
+            for (int i = 0; i < playerHand.Count; i++)
+            {
+                CardData handCard = playerHand[i];
+
+                if (handCard.Suit == cardToRemove.Suit && handCard.Rank == cardToRemove.Rank)
+                {
+                    playerHand.RemoveAt(i);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void AddCardToHand(int playerIndex, CardData cardToAdd)
+        {
+            if (!IsValidPlayerIndex(playerIndex))
+            {
+                return;
+            }
+
+            playerHands[playerIndex].Add(cardToAdd);
+        }
+
+        private bool IsValidPlayerIndex(int playerIndex)
+        {
+            if (playerIndex >= 0 && playerIndex < playerHands.Count)
+            {
+                return true;
+            }
+
+            Debug.LogError("Invalid player index: " + playerIndex);
+            return false;
+        }
     }
 }

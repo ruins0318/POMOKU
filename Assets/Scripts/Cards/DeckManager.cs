@@ -13,6 +13,11 @@ namespace Pomoku.Cards
             get { return deckCards.Count; }
         }
 
+        public IReadOnlyList<CardData> RemainingCards
+        {
+            get { return deckCards; }
+        }
+
         public void CreateMvpDeck()
         {
             deckCards.Clear();

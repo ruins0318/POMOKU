@@ -21,6 +21,7 @@ namespace Pomoku.Core
         private CardData selectedCardData;
         private bool hasSelectedCard;
         private readonly TeamId currentPlayerTeam = TeamId.TeamA;
+        private readonly List<CardData> usedCards = new List<CardData>();
 
         public bool HasSelectedCard
         {
@@ -34,11 +35,20 @@ namespace Pomoku.Core
 
         public void StartLocalGame()
         {
+            ResetLocalGameState();
             CreateManagers();
             CreateAndShowBoard();
             CreateDeckAndDealHands();
             ShowCurrentPlayerHand();
             LogLocalGameStartState();
+            ValidateMvpCardCounts("initial deal");
+        }
+
+        private void ResetLocalGameState()
+        {
+            usedCards.Clear();
+            hasSelectedCard = false;
+            selectedCardData = default(CardData);
         }
 
         private void CreateManagers()
@@ -88,14 +98,28 @@ namespace Pomoku.Core
                 return;
             }
 
+            CardData usedCard = selectedCardData;
+
+            if (!handManager.RemoveFirstMatchingCardFromHand(CurrentPlayerIndex, usedCard))
+            {
+                Debug.LogWarning("Could not remove used card from Player 1 hand: " + usedCard.GetDisplayName());
+                return;
+            }
+
             boardView.ShowChipAtCell(cellIndex, currentPlayerTeam);
+            usedCards.Add(usedCard);
 
             Debug.Log("Placed TeamA chip on " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
+            Debug.Log("Used card: " + usedCard.GetDisplayName());
+
+            DrawReplacementCardForCurrentPlayer();
 
             hasSelectedCard = false;
             selectedCardData = default(CardData);
             boardView.ClearHighlightedCells();
             handView.ClearSelectedCard();
+            RefreshCurrentPlayerHandView();
+            ValidateMvpCardCounts("after card use");
         }
 
         private bool CanPlaceChipOnCell(int cellIndex, BoardCellData cellData)
@@ -128,6 +152,27 @@ namespace Pomoku.Core
             return cellData.Card.Suit == selectedCardData.Suit && cellData.Card.Rank == selectedCardData.Rank;
         }
 
+        private void DrawReplacementCardForCurrentPlayer()
+        {
+            if (deckManager.TryDrawCard(out CardData drawnCard))
+            {
+                handManager.AddCardToHand(CurrentPlayerIndex, drawnCard);
+                Debug.Log("Drew replacement card for Player 1: " + drawnCard.GetDisplayName());
+            }
+            else
+            {
+                Debug.LogWarning("Deck is empty. Player 1 did not draw a replacement card.");
+            }
+
+            Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
+        }
+
+        private void RefreshCurrentPlayerHandView()
+        {
+            IReadOnlyList<CardData> currentPlayerHand = handManager.GetPlayerHand(CurrentPlayerIndex);
+            handView.ShowCurrentPlayerHand(CurrentPlayerIndex, currentPlayerHand, SelectCurrentPlayerCard);
+        }
+
         private void LogLocalGameStartState()
         {
             for (int playerIndex = 0; playerIndex < handManager.PlayerCount; playerIndex++)
@@ -136,6 +181,72 @@ namespace Pomoku.Core
             }
 
             Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
+        }
+
+        private void ValidateMvpCardCounts(string context)
+        {
+            Dictionary<string, int> cardCounts = new Dictionary<string, int>();
+            int totalTrackedCards = 0;
+
+            totalTrackedCards += CountCards(deckManager.RemainingCards, cardCounts);
+
+            for (int playerIndex = 0; playerIndex < handManager.PlayerCount; playerIndex++)
+            {
+                totalTrackedCards += CountCards(handManager.GetPlayerHand(playerIndex), cardCounts);
+            }
+
+            totalTrackedCards += CountCards(usedCards, cardCounts);
+
+            bool isValid = true;
+
+            foreach (KeyValuePair<string, int> cardCount in cardCounts)
+            {
+                if (cardCount.Value > MvpCardRules.CopiesPerRegularCard)
+                {
+                    Debug.LogError("Card count validation failed (" + context + "): " + cardCount.Key + " count is " + cardCount.Value + ", expected at most " + MvpCardRules.CopiesPerRegularCard);
+                    isValid = false;
+                }
+            }
+
+            int expectedTotalCards = MvpCardRules.RegularCardTypeCount * MvpCardRules.CopiesPerRegularCard;
+
+            if (totalTrackedCards != expectedTotalCards)
+            {
+                Debug.LogError("Card count validation failed (" + context + "): tracked card total is " + totalTrackedCards + ", expected " + expectedTotalCards);
+                isValid = false;
+            }
+
+            if (isValid)
+            {
+                Debug.Log("Card count validation passed (" + context + "): tracked " + totalTrackedCards + " cards, no card type exceeds " + MvpCardRules.CopiesPerRegularCard + " copies.");
+            }
+        }
+
+        private static int CountCards(IReadOnlyList<CardData> cards, Dictionary<string, int> cardCounts)
+        {
+            int countedCards = 0;
+
+            for (int i = 0; i < cards.Count; i++)
+            {
+                CardData card = cards[i];
+
+                if (!MvpCardRules.IsMvpRegularCard(card))
+                {
+                    continue;
+                }
+
+                string cardKey = MvpCardRules.GetCardKey(card);
+
+                if (!cardCounts.ContainsKey(cardKey))
+                {
+                    cardCounts.Add(cardKey, 0);
+                }
+
+                cardCounts[cardKey]++;
+                countedCards++;
+            }
+
+            return countedCards;
         }
 
         private static string FormatHandForLog(IReadOnlyList<CardData> handCards)
