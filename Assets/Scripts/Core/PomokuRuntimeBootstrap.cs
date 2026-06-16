@@ -1,5 +1,3 @@
-using Pomoku.Board;
-using Pomoku.UI;
 using UnityEngine;
 
 namespace Pomoku.Core
@@ -7,7 +5,7 @@ namespace Pomoku.Core
     public static class PomokuRuntimeBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void CreateBoardPreview()
+        private static void CreateLocalGamePreview()
         {
             if (GameObject.Find("PomokuRuntimeBootstrap") != null)
             {
@@ -15,12 +13,8 @@ namespace Pomoku.Core
             }
 
             GameObject bootstrapObject = new GameObject("PomokuRuntimeBootstrap");
-
-            BoardManager boardManager = bootstrapObject.AddComponent<BoardManager>();
-            boardManager.CreateBoard();
-
-            BoardView boardView = bootstrapObject.AddComponent<BoardView>();
-            boardView.ShowBoard(boardManager.BoardCells, BoardManager.BoardSize);
+            LocalGameManager localGameManager = bootstrapObject.AddComponent<LocalGameManager>();
+            localGameManager.StartLocalGame();
         }
     }
 }
