@@ -13,6 +13,7 @@ namespace Pomoku.UI
         private readonly Color normalTextColor = new Color(0.08f, 0.12f, 0.16f);
         private readonly Color anchorJariTextColor = new Color(0.12f, 0.09f, 0.04f);
         private readonly Color teamAChipColor = new Color(0.18f, 0.35f, 0.95f);
+        private readonly Color teamBChipColor = new Color(0.88f, 0.18f, 0.20f);
 
         private BoardCellData cellData;
         private int cellIndex;
@@ -85,6 +86,11 @@ namespace Pomoku.UI
             {
                 chipText.text = "A";
                 chipText.color = teamAChipColor;
+            }
+            else if (cellData.ChipOwnerTeam == TeamId.TeamB)
+            {
+                chipText.text = "B";
+                chipText.color = teamBChipColor;
             }
             else
             {

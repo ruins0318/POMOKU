@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pomoku.Board;
 using Pomoku.Cards;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -14,6 +15,7 @@ namespace Pomoku.UI
         private RectTransform handPanel;
         private RectTransform cardsPanel;
         private Text playerLabelText;
+        private Text currentTurnText;
         private Font labelFont;
         private CardView selectedCardView;
         private Action<CardData> cardSelected;
@@ -40,6 +42,14 @@ namespace Pomoku.UI
             }
         }
 
+        public void ShowCurrentTurn(int playerIndex, TeamId teamId)
+        {
+            EnsureCanvas();
+            EnsureCurrentTurnText();
+
+            currentTurnText.text = "Current Turn: Player " + (playerIndex + 1) + " / " + GetTeamText(teamId);
+        }
+
         private void EnsureCanvas()
         {
             if (canvas != null)
@@ -58,6 +68,32 @@ namespace Pomoku.UI
             canvasScaler.matchWidthOrHeight = 0.5f;
 
             EnsureEventSystem();
+        }
+
+        private void EnsureCurrentTurnText()
+        {
+            if (currentTurnText != null)
+            {
+                return;
+            }
+
+            GameObject turnObject = new GameObject("CurrentTurnText", typeof(RectTransform), typeof(Text));
+            turnObject.transform.SetParent(canvas.transform, false);
+
+            RectTransform turnRectTransform = turnObject.GetComponent<RectTransform>();
+            turnRectTransform.anchorMin = new Vector2(0.5f, 1f);
+            turnRectTransform.anchorMax = new Vector2(0.5f, 1f);
+            turnRectTransform.pivot = new Vector2(0.5f, 1f);
+            turnRectTransform.anchoredPosition = new Vector2(0f, -24f);
+            turnRectTransform.sizeDelta = new Vector2(520f, 42f);
+
+            currentTurnText = turnObject.GetComponent<Text>();
+            currentTurnText.font = GetLabelFont();
+            currentTurnText.fontSize = 26;
+            currentTurnText.fontStyle = FontStyle.Bold;
+            currentTurnText.alignment = TextAnchor.MiddleCenter;
+            currentTurnText.color = Color.white;
+            currentTurnText.raycastTarget = false;
         }
 
         private void EnsureEventSystem()
@@ -181,6 +217,21 @@ namespace Pomoku.UI
             }
 
             return labelFont;
+        }
+
+        private static string GetTeamText(TeamId teamId)
+        {
+            switch (teamId)
+            {
+                case TeamId.TeamA:
+                    return "TeamA";
+                case TeamId.TeamB:
+                    return "TeamB";
+                case TeamId.TeamC:
+                    return "TeamC";
+                default:
+                    return "None";
+            }
         }
     }
 }

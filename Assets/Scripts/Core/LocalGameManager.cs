@@ -11,7 +11,6 @@ namespace Pomoku.Core
     {
         private const int LocalPlayerCount = 4;
         private const int InitialHandSize = 6;
-        private const int CurrentPlayerIndex = 0;
 
         private BoardManager boardManager;
         private DeckManager deckManager;
@@ -20,7 +19,7 @@ namespace Pomoku.Core
         private HandView handView;
         private CardData selectedCardData;
         private bool hasSelectedCard;
-        private readonly TeamId currentPlayerTeam = TeamId.TeamA;
+        private int currentPlayerIndex;
         private readonly List<CardData> usedCards = new List<CardData>();
 
         public bool HasSelectedCard
@@ -39,14 +38,15 @@ namespace Pomoku.Core
             CreateManagers();
             CreateAndShowBoard();
             CreateDeckAndDealHands();
-            ShowCurrentPlayerHand();
             LogLocalGameStartState();
             ValidateMvpCardCounts("initial deal");
+            StartCurrentPlayerTurn();
         }
 
         private void ResetLocalGameState()
         {
             usedCards.Clear();
+            currentPlayerIndex = 0;
             hasSelectedCard = false;
             selectedCardData = default(CardData);
         }
@@ -77,8 +77,8 @@ namespace Pomoku.Core
 
         private void ShowCurrentPlayerHand()
         {
-            IReadOnlyList<CardData> currentPlayerHand = handManager.GetPlayerHand(CurrentPlayerIndex);
-            handView.ShowCurrentPlayerHand(CurrentPlayerIndex, currentPlayerHand, SelectCurrentPlayerCard);
+            IReadOnlyList<CardData> currentPlayerHand = handManager.GetPlayerHand(currentPlayerIndex);
+            handView.ShowCurrentPlayerHand(currentPlayerIndex, currentPlayerHand, SelectCurrentPlayerCard);
         }
 
         private void SelectCurrentPlayerCard(CardData cardData)
@@ -86,7 +86,7 @@ namespace Pomoku.Core
             selectedCardData = cardData;
             hasSelectedCard = true;
 
-            Debug.Log("Selected Card: " + selectedCardData.GetDisplayName());
+            Debug.Log(GetPlayerDisplayName(currentPlayerIndex) + " selected card: " + selectedCardData.GetDisplayName());
             int highlightedCellCount = boardView.HighlightCellsMatchingCard(selectedCardData);
             Debug.Log("Highlighted valid cells for: " + selectedCardData.GetDisplayName() + " (" + highlightedCellCount + ")");
         }
@@ -99,18 +99,21 @@ namespace Pomoku.Core
             }
 
             CardData usedCard = selectedCardData;
+            TeamId currentTeam = GetTeamForPlayer(currentPlayerIndex);
+            string currentPlayerName = GetPlayerDisplayName(currentPlayerIndex);
+            string currentTeamName = GetTeamDisplayName(currentTeam);
 
-            if (!handManager.RemoveFirstMatchingCardFromHand(CurrentPlayerIndex, usedCard))
+            if (!handManager.RemoveFirstMatchingCardFromHand(currentPlayerIndex, usedCard))
             {
-                Debug.LogWarning("Could not remove used card from Player 1 hand: " + usedCard.GetDisplayName());
+                Debug.LogWarning("Could not remove used card from " + currentPlayerName + " hand: " + usedCard.GetDisplayName());
                 return;
             }
 
-            boardView.ShowChipAtCell(cellIndex, currentPlayerTeam);
+            boardView.ShowChipAtCell(cellIndex, currentTeam);
             usedCards.Add(usedCard);
 
-            Debug.Log("Placed TeamA chip on " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
-            Debug.Log("Used card: " + usedCard.GetDisplayName());
+            Debug.Log("Placed " + currentTeamName + " chip on " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
+            Debug.Log(currentPlayerName + " used card: " + usedCard.GetDisplayName());
 
             DrawReplacementCardForCurrentPlayer();
 
@@ -118,8 +121,8 @@ namespace Pomoku.Core
             selectedCardData = default(CardData);
             boardView.ClearHighlightedCells();
             handView.ClearSelectedCard();
-            RefreshCurrentPlayerHandView();
-            ValidateMvpCardCounts("after card use");
+            ValidateMvpCardCounts("after " + currentPlayerName + " card use");
+            EndCurrentPlayerTurn(currentPlayerName);
         }
 
         private bool CanPlaceChipOnCell(int cellIndex, BoardCellData cellData)
@@ -156,12 +159,12 @@ namespace Pomoku.Core
         {
             if (deckManager.TryDrawCard(out CardData drawnCard))
             {
-                handManager.AddCardToHand(CurrentPlayerIndex, drawnCard);
-                Debug.Log("Drew replacement card for Player 1: " + drawnCard.GetDisplayName());
+                handManager.AddCardToHand(currentPlayerIndex, drawnCard);
+                Debug.Log("Drew replacement card for " + GetPlayerDisplayName(currentPlayerIndex) + ": " + drawnCard.GetDisplayName());
             }
             else
             {
-                Debug.LogWarning("Deck is empty. Player 1 did not draw a replacement card.");
+                Debug.LogWarning("Deck is empty. " + GetPlayerDisplayName(currentPlayerIndex) + " did not draw a replacement card.");
             }
 
             Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
@@ -169,8 +172,74 @@ namespace Pomoku.Core
 
         private void RefreshCurrentPlayerHandView()
         {
-            IReadOnlyList<CardData> currentPlayerHand = handManager.GetPlayerHand(CurrentPlayerIndex);
-            handView.ShowCurrentPlayerHand(CurrentPlayerIndex, currentPlayerHand, SelectCurrentPlayerCard);
+            ShowCurrentPlayerHand();
+        }
+
+        private void StartCurrentPlayerTurn()
+        {
+            hasSelectedCard = false;
+            selectedCardData = default(CardData);
+
+            if (boardView != null)
+            {
+                boardView.ClearHighlightedCells();
+            }
+
+            if (handView != null)
+            {
+                handView.ClearSelectedCard();
+                RefreshCurrentPlayerHandView();
+                handView.ShowCurrentTurn(currentPlayerIndex, GetTeamForPlayer(currentPlayerIndex));
+            }
+
+            Debug.Log("Turn started: " + GetPlayerDisplayName(currentPlayerIndex) + " / " + GetTeamDisplayName(GetTeamForPlayer(currentPlayerIndex)));
+        }
+
+        private void EndCurrentPlayerTurn(string previousPlayerName)
+        {
+            AdvanceToNextPlayer();
+            Debug.Log("Turn ended: " + previousPlayerName + ". Next player: " + GetPlayerDisplayName(currentPlayerIndex) + " / " + GetTeamDisplayName(GetTeamForPlayer(currentPlayerIndex)));
+            StartCurrentPlayerTurn();
+        }
+
+        private void AdvanceToNextPlayer()
+        {
+            currentPlayerIndex++;
+
+            if (currentPlayerIndex >= LocalPlayerCount)
+            {
+                currentPlayerIndex = 0;
+            }
+        }
+
+        private static TeamId GetTeamForPlayer(int playerIndex)
+        {
+            if (playerIndex == 0 || playerIndex == 2)
+            {
+                return TeamId.TeamA;
+            }
+
+            return TeamId.TeamB;
+        }
+
+        private static string GetPlayerDisplayName(int playerIndex)
+        {
+            return "Player " + (playerIndex + 1);
+        }
+
+        private static string GetTeamDisplayName(TeamId teamId)
+        {
+            switch (teamId)
+            {
+                case TeamId.TeamA:
+                    return "TeamA";
+                case TeamId.TeamB:
+                    return "TeamB";
+                case TeamId.TeamC:
+                    return "TeamC";
+                default:
+                    return "None";
+            }
         }
 
         private void LogLocalGameStartState()
