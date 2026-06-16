@@ -21,6 +21,8 @@ namespace Pomoku.Core
         private bool hasSelectedCard;
         private int currentPlayerIndex;
         private readonly List<CardData> usedCards = new List<CardData>();
+        private readonly List<CompletedPomokuLine> completedPomokuLines = new List<CompletedPomokuLine>();
+        private readonly HashSet<string> completedPomokuLineKeys = new HashSet<string>();
 
         public bool HasSelectedCard
         {
@@ -46,6 +48,8 @@ namespace Pomoku.Core
         private void ResetLocalGameState()
         {
             usedCards.Clear();
+            completedPomokuLines.Clear();
+            completedPomokuLineKeys.Clear();
             currentPlayerIndex = 0;
             hasSelectedCard = false;
             selectedCardData = default(CardData);
@@ -185,16 +189,39 @@ namespace Pomoku.Core
                 return;
             }
 
-            Debug.Log("Pomoku completed by " + GetTeamDisplayName(pomokuResult.TeamId));
-            Debug.Log("Direction: " + pomokuResult.DirectionName);
-            Debug.Log("Cells: " + FormatCellIndicesForLog(pomokuResult.CellIndices));
+            RegisterCompletedPomokuLine(pomokuResult);
+        }
 
-            if (pomokuResult.ContainsAnchorJari)
+        private void RegisterCompletedPomokuLine(PomokuLineResult pomokuResult)
+        {
+            string pomokuLineKey = CreatePomokuLineKey(pomokuResult.CellIndices);
+
+            if (completedPomokuLineKeys.Contains(pomokuLineKey))
+            {
+                Debug.Log("Pomoku already registered: " + pomokuLineKey);
+                return;
+            }
+
+            CompletedPomokuLine completedPomokuLine = new CompletedPomokuLine(
+                pomokuResult.TeamId,
+                new List<int>(pomokuResult.CellIndices),
+                pomokuResult.DirectionName,
+                pomokuResult.ContainsAnchorJari);
+
+            completedPomokuLines.Add(completedPomokuLine);
+            completedPomokuLineKeys.Add(pomokuLineKey);
+
+            boardView.LockPomokuLine(completedPomokuLine.CellIndices, completedPomokuLine.TeamId);
+
+            Debug.Log("Registered Pomoku Line #" + completedPomokuLines.Count);
+            Debug.Log("Team: " + GetTeamDisplayName(completedPomokuLine.TeamId));
+            Debug.Log("Direction: " + completedPomokuLine.DirectionName);
+            Debug.Log("Cells: " + FormatCellIndicesForLog(completedPomokuLine.CellIndices));
+
+            if (completedPomokuLine.ContainsAnchorJari)
             {
                 Debug.Log("Contains AnchorJari: true");
             }
-
-            boardView.HighlightPomokuLine(pomokuResult.CellIndices, pomokuResult.TeamId);
         }
 
         private void RefreshCurrentPlayerHandView()
@@ -355,6 +382,27 @@ namespace Pomoku.Core
             }
 
             return string.Join(", ", cellIndexTexts);
+        }
+
+        private static string CreatePomokuLineKey(IReadOnlyList<int> cellIndices)
+        {
+            List<int> sortedCellIndices = new List<int>();
+
+            for (int i = 0; i < cellIndices.Count; i++)
+            {
+                sortedCellIndices.Add(cellIndices[i]);
+            }
+
+            sortedCellIndices.Sort();
+
+            List<string> cellIndexTexts = new List<string>();
+
+            for (int i = 0; i < sortedCellIndices.Count; i++)
+            {
+                cellIndexTexts.Add(sortedCellIndices[i].ToString());
+            }
+
+            return string.Join("-", cellIndexTexts);
         }
 
         private static string FormatHandForLog(IReadOnlyList<CardData> handCards)

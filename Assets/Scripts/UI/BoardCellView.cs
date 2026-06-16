@@ -25,6 +25,7 @@ namespace Pomoku.UI
         private Button cellButton;
         private Text labelText;
         private Text chipText;
+        private Text lockedText;
         private Action<int, BoardCellData> cellClicked;
 
         public BoardCellData CellData
@@ -48,6 +49,7 @@ namespace Pomoku.UI
             labelText.text = cellData.GetDisplayName();
             SetHighlighted(false);
             RefreshChipDisplay();
+            RefreshLockedDisplay();
         }
 
         public void SetHighlighted(bool isHighlighted)
@@ -85,6 +87,16 @@ namespace Pomoku.UI
             pomokuLineOutline.enabled = isPomokuLineHighlighted;
         }
 
+        public void SetLocked(bool isLocked)
+        {
+            if (cellData != null)
+            {
+                cellData.IsLocked = isLocked;
+            }
+
+            RefreshLockedDisplay();
+        }
+
         public void RefreshChipDisplay()
         {
             if (chipText == null || cellData == null)
@@ -106,6 +118,16 @@ namespace Pomoku.UI
             {
                 chipText.text = string.Empty;
             }
+        }
+
+        public void RefreshLockedDisplay()
+        {
+            if (lockedText == null || cellData == null)
+            {
+                return;
+            }
+
+            lockedText.text = cellData.IsLocked ? "L" : string.Empty;
         }
 
         private void EnsureViewObjects(Font labelFont)
@@ -161,6 +183,24 @@ namespace Pomoku.UI
             chipText.fontStyle = FontStyle.Bold;
             chipText.alignment = TextAnchor.MiddleCenter;
             chipText.raycastTarget = false;
+
+            GameObject lockedObject = new GameObject("LockedLabel", typeof(RectTransform), typeof(Text));
+            lockedObject.transform.SetParent(transform, false);
+
+            RectTransform lockedRectTransform = lockedObject.GetComponent<RectTransform>();
+            lockedRectTransform.anchorMin = new Vector2(0f, 1f);
+            lockedRectTransform.anchorMax = new Vector2(0f, 1f);
+            lockedRectTransform.pivot = new Vector2(0f, 1f);
+            lockedRectTransform.anchoredPosition = new Vector2(6f, -4f);
+            lockedRectTransform.sizeDelta = new Vector2(20f, 20f);
+
+            lockedText = lockedObject.GetComponent<Text>();
+            lockedText.font = labelFont;
+            lockedText.fontSize = 16;
+            lockedText.fontStyle = FontStyle.Bold;
+            lockedText.alignment = TextAnchor.MiddleCenter;
+            lockedText.color = new Color(0.08f, 0.08f, 0.08f);
+            lockedText.raycastTarget = false;
         }
 
         private void EnsurePomokuLineOutline()

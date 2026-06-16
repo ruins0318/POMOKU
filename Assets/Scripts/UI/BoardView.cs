@@ -118,6 +118,30 @@ namespace Pomoku.UI
             }
         }
 
+        public void LockPomokuLine(IReadOnlyList<int> cellIndices, TeamId teamId)
+        {
+            if (cellIndices == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < cellIndices.Count; i++)
+            {
+                int cellIndex = cellIndices[i];
+
+                if (cellIndex < 0 || cellIndex >= boardCellViews.Count)
+                {
+                    Debug.LogWarning("Cannot lock Pomoku line because cell index is invalid: " + cellIndex);
+                    continue;
+                }
+
+                BoardCellView cellView = boardCellViews[cellIndex];
+                cellView.CellData.IsLocked = true;
+                cellView.SetLocked(true);
+                cellView.SetPomokuLineHighlighted(true, teamId);
+            }
+        }
+
         public void ClearPomokuLineHighlights()
         {
             for (int i = 0; i < boardCellViews.Count; i++)
