@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,8 +5,6 @@ namespace Pomoku.Cards
 {
     public class DeckManager : MonoBehaviour
     {
-        private const int MvpDeckSetCount = 2;
-
         private readonly List<CardData> deckCards = new List<CardData>();
         private readonly System.Random random = new System.Random();
 
@@ -19,11 +16,7 @@ namespace Pomoku.Cards
         public void CreateMvpDeck()
         {
             deckCards.Clear();
-
-            for (int setIndex = 0; setIndex < MvpDeckSetCount; setIndex++)
-            {
-                AddOneRegularCardSet();
-            }
+            deckCards.AddRange(MvpCardRules.CreateMvpRegularCardPool(MvpCardRules.CopiesPerRegularCard));
         }
 
         public void ShuffleDeck()
@@ -51,16 +44,6 @@ namespace Pomoku.Cards
             return true;
         }
 
-        private void AddOneRegularCardSet()
-        {
-            foreach (Suit suit in Enum.GetValues(typeof(Suit)))
-            {
-                for (int rankValue = 0; rankValue < 13; rankValue++)
-                {
-                    Rank rank = (Rank)rankValue;
-                    deckCards.Add(new CardData(suit, rank, false));
-                }
-            }
-        }
+        // J and Joker cards will be added later when their special effects are implemented.
     }
 }

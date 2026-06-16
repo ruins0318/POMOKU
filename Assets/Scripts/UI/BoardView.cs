@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Pomoku.Board;
+using Pomoku.Cards;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,6 +15,7 @@ namespace Pomoku.UI
         private Canvas canvas;
         private RectTransform boardPanel;
         private Font labelFont;
+        private readonly List<BoardCellView> boardCellViews = new List<BoardCellView>();
 
         public void ShowBoard(IReadOnlyList<BoardCellData> boardCells, int boardSize)
         {
@@ -26,10 +28,45 @@ namespace Pomoku.UI
             EnsureCanvas();
             EnsureBoardPanel();
             ClearBoardCells();
+            boardCellViews.Clear();
 
             for (int i = 0; i < boardCells.Count; i++)
             {
                 CreateBoardCell(boardCells[i]);
+            }
+        }
+
+        public int HighlightCellsMatchingCard(CardData selectedCard)
+        {
+            ClearHighlightedCells();
+
+            if (!MvpCardRules.IsMvpRegularCard(selectedCard))
+            {
+                return 0;
+            }
+
+            int highlightedCellCount = 0;
+
+            for (int i = 0; i < boardCellViews.Count; i++)
+            {
+                BoardCellView cellView = boardCellViews[i];
+                BoardCellData cellData = cellView.CellData;
+
+                if (IsNormalCellMatchingCard(cellData, selectedCard))
+                {
+                    cellView.SetHighlighted(true);
+                    highlightedCellCount++;
+                }
+            }
+
+            return highlightedCellCount;
+        }
+
+        public void ClearHighlightedCells()
+        {
+            for (int i = 0; i < boardCellViews.Count; i++)
+            {
+                boardCellViews[i].SetHighlighted(false);
             }
         }
 
@@ -94,6 +131,22 @@ namespace Pomoku.UI
 
             BoardCellView cellView = cellObject.GetComponent<BoardCellView>();
             cellView.SetCellData(cellData, GetLabelFont());
+            boardCellViews.Add(cellView);
+        }
+
+        private static bool IsNormalCellMatchingCard(BoardCellData cellData, CardData selectedCard)
+        {
+            if (cellData == null)
+            {
+                return false;
+            }
+
+            if (cellData.CellType != BoardCellType.Normal)
+            {
+                return false;
+            }
+
+            return cellData.Card.Suit == selectedCard.Suit && cellData.Card.Rank == selectedCard.Rank;
         }
 
         private Font GetLabelFont()

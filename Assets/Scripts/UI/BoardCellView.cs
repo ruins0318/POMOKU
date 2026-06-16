@@ -6,24 +6,54 @@ namespace Pomoku.UI
 {
     public class BoardCellView : MonoBehaviour
     {
+        private readonly Color normalCellColor = new Color(0.93f, 0.95f, 0.97f);
+        private readonly Color anchorJariCellColor = new Color(0.95f, 0.74f, 0.28f);
+        private readonly Color highlightedCellColor = new Color(0.44f, 0.82f, 0.46f);
+        private readonly Color normalTextColor = new Color(0.08f, 0.12f, 0.16f);
+        private readonly Color anchorJariTextColor = new Color(0.12f, 0.09f, 0.04f);
+
+        private BoardCellData cellData;
         private Image backgroundImage;
         private Text labelText;
 
+        public BoardCellData CellData
+        {
+            get { return cellData; }
+        }
+
         public void SetCellData(BoardCellData cellData, Font labelFont)
         {
+            this.cellData = cellData;
+
             EnsureViewObjects(labelFont);
 
             labelText.text = cellData.GetDisplayName();
+            SetHighlighted(false);
+        }
+
+        public void SetHighlighted(bool isHighlighted)
+        {
+            if (cellData == null)
+            {
+                return;
+            }
+
+            if (isHighlighted && cellData.CellType == BoardCellType.Normal)
+            {
+                backgroundImage.color = highlightedCellColor;
+                labelText.color = normalTextColor;
+                return;
+            }
 
             if (cellData.CellType == BoardCellType.AnchorJari)
             {
-                backgroundImage.color = new Color(0.95f, 0.74f, 0.28f);
-                labelText.color = new Color(0.12f, 0.09f, 0.04f);
+                backgroundImage.color = anchorJariCellColor;
+                labelText.color = anchorJariTextColor;
             }
             else
             {
-                backgroundImage.color = new Color(0.93f, 0.95f, 0.97f);
-                labelText.color = new Color(0.08f, 0.12f, 0.16f);
+                backgroundImage.color = normalCellColor;
+                labelText.color = normalTextColor;
             }
         }
 

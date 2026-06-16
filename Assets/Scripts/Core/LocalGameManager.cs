@@ -76,6 +76,8 @@ namespace Pomoku.Core
             hasSelectedCard = true;
 
             Debug.Log("Selected Card: " + selectedCardData.GetDisplayName());
+            int highlightedCellCount = boardView.HighlightCellsMatchingCard(selectedCardData);
+            Debug.Log("Highlighted valid cells for: " + selectedCardData.GetDisplayName() + " (" + highlightedCellCount + ")");
         }
 
         private void LogLocalGameStartState()
