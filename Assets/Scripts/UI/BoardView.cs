@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using Pomoku.Board;
 using Pomoku.Cards;
 using UnityEngine;
@@ -16,14 +17,17 @@ namespace Pomoku.UI
         private RectTransform boardPanel;
         private Font labelFont;
         private readonly List<BoardCellView> boardCellViews = new List<BoardCellView>();
+        private Action<int, BoardCellData> cellClicked;
 
-        public void ShowBoard(IReadOnlyList<BoardCellData> boardCells, int boardSize)
+        public void ShowBoard(IReadOnlyList<BoardCellData> boardCells, int boardSize, Action<int, BoardCellData> onCellClicked)
         {
             if (boardCells == null || boardCells.Count != boardSize * boardSize)
             {
                 Debug.LogError("BoardView received invalid board data.");
                 return;
             }
+
+            cellClicked = onCellClicked;
 
             EnsureCanvas();
             EnsureBoardPanel();
@@ -34,6 +38,29 @@ namespace Pomoku.UI
             {
                 CreateBoardCell(boardCells[i]);
             }
+        }
+
+        public bool IsCellHighlighted(int cellIndex)
+        {
+            if (cellIndex < 0 || cellIndex >= boardCellViews.Count)
+            {
+                return false;
+            }
+
+            return boardCellViews[cellIndex].IsHighlighted;
+        }
+
+        public void ShowChipAtCell(int cellIndex, TeamId teamId)
+        {
+            if (cellIndex < 0 || cellIndex >= boardCellViews.Count)
+            {
+                Debug.LogError("Cannot show chip because cell index is invalid: " + cellIndex);
+                return;
+            }
+
+            BoardCellView cellView = boardCellViews[cellIndex];
+            cellView.CellData.ChipOwnerTeam = teamId;
+            cellView.RefreshChipDisplay();
         }
 
         public int HighlightCellsMatchingCard(CardData selectedCard)
@@ -130,7 +157,7 @@ namespace Pomoku.UI
             cellObject.transform.SetParent(boardPanel, false);
 
             BoardCellView cellView = cellObject.GetComponent<BoardCellView>();
-            cellView.SetCellData(cellData, GetLabelFont());
+            cellView.SetCellData(cellData, boardCellViews.Count, GetLabelFont(), cellClicked);
             boardCellViews.Add(cellView);
         }
 
@@ -142,6 +169,11 @@ namespace Pomoku.UI
             }
 
             if (cellData.CellType != BoardCellType.Normal)
+            {
+                return false;
+            }
+
+            if (cellData.ChipOwnerTeam != TeamId.None)
             {
                 return false;
             }

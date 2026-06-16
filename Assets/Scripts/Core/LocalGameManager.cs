@@ -20,6 +20,7 @@ namespace Pomoku.Core
         private HandView handView;
         private CardData selectedCardData;
         private bool hasSelectedCard;
+        private readonly TeamId currentPlayerTeam = TeamId.TeamA;
 
         public bool HasSelectedCard
         {
@@ -52,7 +53,7 @@ namespace Pomoku.Core
         private void CreateAndShowBoard()
         {
             boardManager.CreateBoard();
-            boardView.ShowBoard(boardManager.BoardCells, BoardManager.BoardSize);
+            boardView.ShowBoard(boardManager.BoardCells, BoardManager.BoardSize, TryPlaceChipOnBoardCell);
         }
 
         private void CreateDeckAndDealHands()
@@ -78,6 +79,53 @@ namespace Pomoku.Core
             Debug.Log("Selected Card: " + selectedCardData.GetDisplayName());
             int highlightedCellCount = boardView.HighlightCellsMatchingCard(selectedCardData);
             Debug.Log("Highlighted valid cells for: " + selectedCardData.GetDisplayName() + " (" + highlightedCellCount + ")");
+        }
+
+        private void TryPlaceChipOnBoardCell(int cellIndex, BoardCellData cellData)
+        {
+            if (!CanPlaceChipOnCell(cellIndex, cellData))
+            {
+                return;
+            }
+
+            boardView.ShowChipAtCell(cellIndex, currentPlayerTeam);
+
+            Debug.Log("Placed TeamA chip on " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
+
+            hasSelectedCard = false;
+            selectedCardData = default(CardData);
+            boardView.ClearHighlightedCells();
+            handView.ClearSelectedCard();
+        }
+
+        private bool CanPlaceChipOnCell(int cellIndex, BoardCellData cellData)
+        {
+            if (!hasSelectedCard)
+            {
+                return false;
+            }
+
+            if (cellData == null)
+            {
+                return false;
+            }
+
+            if (!boardView.IsCellHighlighted(cellIndex))
+            {
+                return false;
+            }
+
+            if (cellData.CellType != BoardCellType.Normal)
+            {
+                return false;
+            }
+
+            if (cellData.ChipOwnerTeam != TeamId.None)
+            {
+                return false;
+            }
+
+            return cellData.Card.Suit == selectedCardData.Suit && cellData.Card.Rank == selectedCardData.Rank;
         }
 
         private void LogLocalGameStartState()

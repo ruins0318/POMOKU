@@ -164,6 +164,15 @@ namespace Pomoku.UI
             }
         }
 
+        public void ClearSelectedCard()
+        {
+            if (selectedCardView != null)
+            {
+                selectedCardView.SetSelected(false);
+                selectedCardView = null;
+            }
+        }
+
         private Font GetLabelFont()
         {
             if (labelFont == null)
