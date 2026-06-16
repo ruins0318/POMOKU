@@ -115,6 +115,7 @@ namespace Pomoku.Core
             Debug.Log("Placed " + currentTeamName + " chip on " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
             Debug.Log(currentPlayerName + " used card: " + usedCard.GetDisplayName());
 
+            CheckPomokuAfterChipPlacement(cellIndex, currentTeam);
             DrawReplacementCardForCurrentPlayer();
 
             hasSelectedCard = false;
@@ -168,6 +169,32 @@ namespace Pomoku.Core
             }
 
             Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
+        }
+
+        private void CheckPomokuAfterChipPlacement(int placedCellIndex, TeamId teamId)
+        {
+            PomokuLineResult pomokuResult = PomokuChecker.CheckForPomoku(
+                boardManager.BoardCells,
+                BoardManager.BoardSize,
+                placedCellIndex,
+                teamId);
+
+            if (!pomokuResult.IsCompleted)
+            {
+                Debug.Log("No Pomoku completed");
+                return;
+            }
+
+            Debug.Log("Pomoku completed by " + GetTeamDisplayName(pomokuResult.TeamId));
+            Debug.Log("Direction: " + pomokuResult.DirectionName);
+            Debug.Log("Cells: " + FormatCellIndicesForLog(pomokuResult.CellIndices));
+
+            if (pomokuResult.ContainsAnchorJari)
+            {
+                Debug.Log("Contains AnchorJari: true");
+            }
+
+            boardView.HighlightPomokuLine(pomokuResult.CellIndices, pomokuResult.TeamId);
         }
 
         private void RefreshCurrentPlayerHandView()
@@ -316,6 +343,18 @@ namespace Pomoku.Core
             }
 
             return countedCards;
+        }
+
+        private static string FormatCellIndicesForLog(IReadOnlyList<int> cellIndices)
+        {
+            List<string> cellIndexTexts = new List<string>();
+
+            for (int i = 0; i < cellIndices.Count; i++)
+            {
+                cellIndexTexts.Add(cellIndices[i].ToString());
+            }
+
+            return string.Join(", ", cellIndexTexts);
         }
 
         private static string FormatHandForLog(IReadOnlyList<CardData> handCards)

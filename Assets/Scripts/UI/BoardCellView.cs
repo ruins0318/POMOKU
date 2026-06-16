@@ -14,11 +14,14 @@ namespace Pomoku.UI
         private readonly Color anchorJariTextColor = new Color(0.12f, 0.09f, 0.04f);
         private readonly Color teamAChipColor = new Color(0.18f, 0.35f, 0.95f);
         private readonly Color teamBChipColor = new Color(0.88f, 0.18f, 0.20f);
+        private readonly Color teamAPomokuLineOutlineColor = new Color(0.16f, 0.62f, 1f);
+        private readonly Color teamBPomokuLineOutlineColor = new Color(1f, 0.22f, 0.24f);
 
         private BoardCellData cellData;
         private int cellIndex;
         private bool isHighlighted;
         private Image backgroundImage;
+        private Outline pomokuLineOutline;
         private Button cellButton;
         private Text labelText;
         private Text chipText;
@@ -75,6 +78,13 @@ namespace Pomoku.UI
             }
         }
 
+        public void SetPomokuLineHighlighted(bool isPomokuLineHighlighted, TeamId teamId)
+        {
+            EnsurePomokuLineOutline();
+            pomokuLineOutline.effectColor = GetPomokuLineOutlineColor(teamId);
+            pomokuLineOutline.enabled = isPomokuLineHighlighted;
+        }
+
         public void RefreshChipDisplay()
         {
             if (chipText == null || cellData == null)
@@ -109,6 +119,7 @@ namespace Pomoku.UI
 
             backgroundImage.raycastTarget = true;
 
+            EnsurePomokuLineOutline();
             EnsureButton();
 
             if (labelText != null)
@@ -150,6 +161,36 @@ namespace Pomoku.UI
             chipText.fontStyle = FontStyle.Bold;
             chipText.alignment = TextAnchor.MiddleCenter;
             chipText.raycastTarget = false;
+        }
+
+        private void EnsurePomokuLineOutline()
+        {
+            pomokuLineOutline = GetComponent<Outline>();
+
+            if (pomokuLineOutline == null)
+            {
+                pomokuLineOutline = gameObject.AddComponent<Outline>();
+            }
+
+            pomokuLineOutline.effectColor = GetPomokuLineOutlineColor(TeamId.None);
+            pomokuLineOutline.effectDistance = new Vector2(4f, -4f);
+            pomokuLineOutline.useGraphicAlpha = false;
+            pomokuLineOutline.enabled = false;
+        }
+
+        private Color GetPomokuLineOutlineColor(TeamId teamId)
+        {
+            if (teamId == TeamId.TeamA)
+            {
+                return teamAPomokuLineOutlineColor;
+            }
+
+            if (teamId == TeamId.TeamB)
+            {
+                return teamBPomokuLineOutlineColor;
+            }
+
+            return Color.white;
         }
 
         private void EnsureButton()

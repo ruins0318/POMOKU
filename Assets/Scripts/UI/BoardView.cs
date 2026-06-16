@@ -97,6 +97,35 @@ namespace Pomoku.UI
             }
         }
 
+        public void HighlightPomokuLine(IReadOnlyList<int> cellIndices, TeamId teamId)
+        {
+            if (cellIndices == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < cellIndices.Count; i++)
+            {
+                int cellIndex = cellIndices[i];
+
+                if (cellIndex < 0 || cellIndex >= boardCellViews.Count)
+                {
+                    Debug.LogWarning("Cannot highlight Pomoku line because cell index is invalid: " + cellIndex);
+                    continue;
+                }
+
+                boardCellViews[cellIndex].SetPomokuLineHighlighted(true, teamId);
+            }
+        }
+
+        public void ClearPomokuLineHighlights()
+        {
+            for (int i = 0; i < boardCellViews.Count; i++)
+            {
+                boardCellViews[i].SetPomokuLineHighlighted(false, TeamId.None);
+            }
+        }
+
         private void EnsureCanvas()
         {
             if (canvas != null)
