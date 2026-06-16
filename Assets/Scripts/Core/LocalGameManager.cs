@@ -15,6 +15,7 @@ namespace Pomoku.Core
         private BoardManager boardManager;
         private DeckManager deckManager;
         private HandManager handManager;
+        private ScoreManager scoreManager;
         private BoardView boardView;
         private HandView handView;
         private CardData selectedCardData;
@@ -38,6 +39,7 @@ namespace Pomoku.Core
         {
             ResetLocalGameState();
             CreateManagers();
+            scoreManager.ResetScores();
             CreateAndShowBoard();
             CreateDeckAndDealHands();
             LogLocalGameStartState();
@@ -60,6 +62,7 @@ namespace Pomoku.Core
             boardManager = gameObject.AddComponent<BoardManager>();
             deckManager = gameObject.AddComponent<DeckManager>();
             handManager = gameObject.AddComponent<HandManager>();
+            scoreManager = gameObject.AddComponent<ScoreManager>();
             boardView = gameObject.AddComponent<BoardView>();
             handView = gameObject.AddComponent<HandView>();
         }
@@ -222,6 +225,23 @@ namespace Pomoku.Core
             {
                 Debug.Log("Contains AnchorJari: true");
             }
+
+            AddScoreForCompletedPomoku(completedPomokuLine);
+        }
+
+        private void AddScoreForCompletedPomoku(CompletedPomokuLine completedPomokuLine)
+        {
+            const int mvpPomokuScore = 1;
+
+            scoreManager.AddScore(completedPomokuLine.TeamId, mvpPomokuScore);
+            Debug.Log(GetTeamDisplayName(completedPomokuLine.TeamId) + " scored " + mvpPomokuScore + " point");
+            LogCurrentScore();
+            UpdateScoreHud();
+        }
+
+        private void LogCurrentScore()
+        {
+            Debug.Log("Current Score - TeamA: " + scoreManager.GetScore(TeamId.TeamA) + " / TeamB: " + scoreManager.GetScore(TeamId.TeamB));
         }
 
         private void RefreshCurrentPlayerHandView()
@@ -244,9 +264,20 @@ namespace Pomoku.Core
                 handView.ClearSelectedCard();
                 RefreshCurrentPlayerHandView();
                 handView.ShowCurrentTurn(currentPlayerIndex, GetTeamForPlayer(currentPlayerIndex));
+                UpdateScoreHud();
             }
 
             Debug.Log("Turn started: " + GetPlayerDisplayName(currentPlayerIndex) + " / " + GetTeamDisplayName(GetTeamForPlayer(currentPlayerIndex)));
+        }
+
+        private void UpdateScoreHud()
+        {
+            if (handView == null || scoreManager == null)
+            {
+                return;
+            }
+
+            handView.ShowScores(scoreManager.GetScore(TeamId.TeamA), scoreManager.GetScore(TeamId.TeamB));
         }
 
         private void EndCurrentPlayerTurn(string previousPlayerName)

@@ -16,6 +16,7 @@ namespace Pomoku.UI
         private RectTransform cardsPanel;
         private Text playerLabelText;
         private Text currentTurnText;
+        private Text scoreText;
         private Font labelFont;
         private CardView selectedCardView;
         private Action<CardData> cardSelected;
@@ -50,6 +51,14 @@ namespace Pomoku.UI
             currentTurnText.text = "Current Turn: Player " + (playerIndex + 1) + " / " + GetTeamText(teamId);
         }
 
+        public void ShowScores(int teamAScore, int teamBScore)
+        {
+            EnsureCanvas();
+            EnsureScoreText();
+
+            scoreText.text = "TeamA Score: " + teamAScore + "\nTeamB Score: " + teamBScore;
+        }
+
         private void EnsureCanvas()
         {
             if (canvas != null)
@@ -68,6 +77,32 @@ namespace Pomoku.UI
             canvasScaler.matchWidthOrHeight = 0.5f;
 
             EnsureEventSystem();
+        }
+
+        private void EnsureScoreText()
+        {
+            if (scoreText != null)
+            {
+                return;
+            }
+
+            GameObject scoreObject = new GameObject("TeamScoreText", typeof(RectTransform), typeof(Text));
+            scoreObject.transform.SetParent(canvas.transform, false);
+
+            RectTransform scoreRectTransform = scoreObject.GetComponent<RectTransform>();
+            scoreRectTransform.anchorMin = new Vector2(0f, 1f);
+            scoreRectTransform.anchorMax = new Vector2(0f, 1f);
+            scoreRectTransform.pivot = new Vector2(0f, 1f);
+            scoreRectTransform.anchoredPosition = new Vector2(24f, -24f);
+            scoreRectTransform.sizeDelta = new Vector2(320f, 72f);
+
+            scoreText = scoreObject.GetComponent<Text>();
+            scoreText.font = GetLabelFont();
+            scoreText.fontSize = 22;
+            scoreText.fontStyle = FontStyle.Bold;
+            scoreText.alignment = TextAnchor.UpperLeft;
+            scoreText.color = Color.white;
+            scoreText.raycastTarget = false;
         }
 
         private void EnsureCurrentTurnText()
