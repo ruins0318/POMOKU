@@ -61,3 +61,5 @@ sysinfo.txt
 
 # Unity crash / backup
 *.stackdump
+
+UpgradeLog*.htm
