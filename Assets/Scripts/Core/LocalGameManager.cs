@@ -18,10 +18,15 @@ namespace Pomoku.Core
         private ScoreManager scoreManager;
         private BoardView boardView;
         private HandView handView;
+        private DebugPanelView debugPanelView;
         private CardData selectedCardData;
         private bool hasSelectedCard;
         private int currentPlayerIndex;
+        private LocalPlayMode currentPlayMode = LocalPlayMode.NormalFourPlayer;
+        private BoardGenerationMode currentBoardGenerationMode = BoardGenerationMode.RandomMvp;
+        private HandGenerationMode currentHandGenerationMode = HandGenerationMode.RandomHands;
         private readonly List<CardData> usedCards = new List<CardData>();
+        private readonly List<CardData> debugScoringReservedDrawCards = new List<CardData>();
         private readonly List<CompletedPomokuLine> completedPomokuLines = new List<CompletedPomokuLine>();
         private readonly HashSet<string> completedPomokuLineKeys = new HashSet<string>();
 
@@ -37,8 +42,22 @@ namespace Pomoku.Core
 
         public void StartLocalGame()
         {
+            EnsureManagers();
+            ShowDebugPanel();
+            StartNewLocalGame(LocalPlayMode.NormalFourPlayer, BoardGenerationMode.RandomMvp, HandGenerationMode.RandomHands);
+        }
+
+        public void StartNewLocalGame(LocalPlayMode localPlayMode, BoardGenerationMode boardGenerationMode, HandGenerationMode handGenerationMode)
+        {
+            EnsureManagers();
+
+            currentPlayMode = localPlayMode;
+            currentBoardGenerationMode = boardGenerationMode;
+            currentHandGenerationMode = handGenerationMode;
+
+            Debug.Log("Starting local game mode: " + currentPlayMode + " / " + currentBoardGenerationMode + " / " + currentHandGenerationMode);
+
             ResetLocalGameState();
-            CreateManagers();
             scoreManager.ResetScores();
             CreateAndShowBoard();
             CreateDeckAndDealHands();
@@ -47,9 +66,15 @@ namespace Pomoku.Core
             StartCurrentPlayerTurn();
         }
 
+        public void RestartCurrentMode()
+        {
+            StartNewLocalGame(currentPlayMode, currentBoardGenerationMode, currentHandGenerationMode);
+        }
+
         private void ResetLocalGameState()
         {
             usedCards.Clear();
+            debugScoringReservedDrawCards.Clear();
             completedPomokuLines.Clear();
             completedPomokuLineKeys.Clear();
             currentPlayerIndex = 0;
@@ -57,29 +82,157 @@ namespace Pomoku.Core
             selectedCardData = default(CardData);
         }
 
-        private void CreateManagers()
+        private void EnsureManagers()
         {
-            boardManager = gameObject.AddComponent<BoardManager>();
-            deckManager = gameObject.AddComponent<DeckManager>();
-            handManager = gameObject.AddComponent<HandManager>();
-            scoreManager = gameObject.AddComponent<ScoreManager>();
-            boardView = gameObject.AddComponent<BoardView>();
-            handView = gameObject.AddComponent<HandView>();
+            if (boardManager == null)
+            {
+                boardManager = gameObject.AddComponent<BoardManager>();
+            }
+
+            if (deckManager == null)
+            {
+                deckManager = gameObject.AddComponent<DeckManager>();
+            }
+
+            if (handManager == null)
+            {
+                handManager = gameObject.AddComponent<HandManager>();
+            }
+
+            if (scoreManager == null)
+            {
+                scoreManager = gameObject.AddComponent<ScoreManager>();
+            }
+
+            if (boardView == null)
+            {
+                boardView = gameObject.AddComponent<BoardView>();
+            }
+
+            if (handView == null)
+            {
+                handView = gameObject.AddComponent<HandView>();
+            }
+
+            if (debugPanelView == null)
+            {
+                debugPanelView = gameObject.AddComponent<DebugPanelView>();
+            }
+        }
+
+        private void ShowDebugPanel()
+        {
+            debugPanelView.Show(
+                StartNormalFourPlayerRandomGame,
+                StartDebugScoringTestGame,
+                RestartCurrentMode);
+        }
+
+        private void StartNormalFourPlayerRandomGame()
+        {
+            StartNewLocalGame(LocalPlayMode.NormalFourPlayer, BoardGenerationMode.RandomMvp, HandGenerationMode.RandomHands);
+        }
+
+        private void StartDebugScoringTestGame()
+        {
+            StartNewLocalGame(LocalPlayMode.DebugPlayer1Only, BoardGenerationMode.TestScoringPreset, HandGenerationMode.TestScoringHands);
         }
 
         private void CreateAndShowBoard()
         {
-            boardManager.CreateBoard();
+            boardManager.CreateBoard(currentBoardGenerationMode);
             boardView.ShowBoard(boardManager.BoardCells, BoardManager.BoardSize, TryPlaceChipOnBoardCell);
         }
 
         private void CreateDeckAndDealHands()
         {
             deckManager.CreateMvpDeck();
-            deckManager.ShuffleDeck();
-
             handManager.CreatePlayerHands(LocalPlayerCount);
+
+            if (currentHandGenerationMode == HandGenerationMode.TestScoringHands)
+            {
+                CreateTestScoringHands();
+                return;
+            }
+
+            deckManager.ShuffleDeck();
             handManager.DealInitialHands(deckManager, InitialHandSize);
+        }
+
+        private void CreateTestScoringHands()
+        {
+            AddTestCardToPlayerHand(0, Suit.Spade, Rank.Seven);
+            AddTestCardToPlayerHand(0, Suit.Spade, Rank.Eight);
+            AddTestCardToPlayerHand(0, Suit.Spade, Rank.Nine);
+            AddTestCardToPlayerHand(0, Suit.Spade, Rank.Ten);
+            AddTestCardToPlayerHand(0, Suit.Spade, Rank.Queen);
+            AddTestCardToPlayerHand(0, Suit.Heart, Rank.Two);
+
+            List<CardData> testDrawCards = new List<CardData>
+            {
+                CreateTestCard(Suit.Heart, Rank.Five),
+                CreateTestCard(Suit.Heart, Rank.Eight),
+                CreateTestCard(Suit.Heart, Rank.Ten),
+                CreateTestCard(Suit.Heart, Rank.Ace),
+                CreateTestCard(Suit.Club, Rank.Three),
+                CreateTestCard(Suit.Diamond, Rank.Three),
+                CreateTestCard(Suit.Spade, Rank.Three),
+                CreateTestCard(Suit.Heart, Rank.Seven),
+                CreateTestCard(Suit.Diamond, Rank.Nine),
+                CreateTestCard(Suit.Club, Rank.Four),
+                CreateTestCard(Suit.Diamond, Rank.Four),
+                CreateTestCard(Suit.Spade, Rank.Eight),
+                CreateTestCard(Suit.Heart, Rank.Eight),
+                CreateTestCard(Suit.Club, Rank.Ace),
+                CreateTestCard(Suit.Club, Rank.Five),
+                CreateTestCard(Suit.Club, Rank.Six),
+                CreateTestCard(Suit.Club, Rank.Seven),
+                CreateTestCard(Suit.Club, Rank.Eight)
+            };
+
+            ReserveDebugScoringDrawCards(testDrawCards);
+
+            Debug.Log("Debug Scoring Test Mode Started");
+            Debug.Log("Straight test target: cells 10, 11, 12, 13, 14");
+            Debug.Log("Suggested play order: S7, S8, S9, S10, SQ");
+            Debug.Log("TestScoringHands Player 1 initial hand: S7, S8, S9, S10, SQ, H2");
+            Debug.Log("TestScoringHands reserved draw order: " + FormatHandForLog(debugScoringReservedDrawCards));
+        }
+
+        private void AddTestCardToPlayerHand(int playerIndex, Suit suit, Rank rank)
+        {
+            CardData requestedCard = CreateTestCard(suit, rank);
+
+            if (deckManager.TryRemoveFirstMatchingCard(requestedCard, out CardData removedCard))
+            {
+                handManager.AddCardToHand(playerIndex, removedCard);
+            }
+            else
+            {
+                Debug.LogError("TestScoringHands failed to add card to hand: " + requestedCard.GetDisplayName());
+            }
+        }
+
+        private void ReserveDebugScoringDrawCards(List<CardData> testDrawCards)
+        {
+            for (int i = 0; i < testDrawCards.Count; i++)
+            {
+                CardData requestedCard = testDrawCards[i];
+
+                if (deckManager.TryRemoveFirstMatchingCard(requestedCard, out CardData removedCard))
+                {
+                    debugScoringReservedDrawCards.Add(removedCard);
+                }
+                else
+                {
+                    Debug.LogError("TestScoringHands failed to prepare draw card: " + requestedCard.GetDisplayName());
+                }
+            }
+        }
+
+        private static CardData CreateTestCard(Suit suit, Rank rank)
+        {
+            return new CardData(suit, rank, false);
         }
 
         private void ShowCurrentPlayerHand()
@@ -137,34 +290,60 @@ namespace Pomoku.Core
         {
             if (!hasSelectedCard)
             {
+                Debug.Log("Cannot place chip: no card selected");
                 return false;
             }
 
             if (cellData == null)
             {
+                Debug.Log("Cannot place chip: cell data is missing at cell index " + cellIndex);
                 return false;
             }
 
-            if (!boardView.IsCellHighlighted(cellIndex))
+            if (cellData.CellType == BoardCellType.AnchorJari)
             {
+                Debug.Log("Cannot place chip: AnchorJari is not directly placeable at cell index " + cellIndex);
                 return false;
             }
 
             if (cellData.CellType != BoardCellType.Normal)
             {
+                Debug.Log("Cannot place chip: cell is not a normal card cell at cell index " + cellIndex);
                 return false;
             }
 
             if (cellData.ChipOwnerTeam != TeamId.None)
             {
+                Debug.Log("Cannot place chip: cell already occupied at cell index " + cellIndex);
                 return false;
             }
 
-            return cellData.Card.Suit == selectedCardData.Suit && cellData.Card.Rank == selectedCardData.Rank;
+            if (cellData.Card.Suit != selectedCardData.Suit || cellData.Card.Rank != selectedCardData.Rank)
+            {
+                Debug.Log("Cannot place chip: selected card " + selectedCardData.GetDisplayName() + " does not match cell " + cellData.Card.GetDisplayName() + " at cell index " + cellIndex);
+                return false;
+            }
+
+            if (!boardView.IsCellHighlighted(cellIndex))
+            {
+                Debug.Log("Cannot place chip: matching cell is not highlighted at cell index " + cellIndex);
+                return false;
+            }
+
+            return true;
         }
 
         private void DrawReplacementCardForCurrentPlayer()
         {
+            if (TryDrawDebugScoringReservedCard(out CardData debugDrawnCard))
+            {
+                handManager.AddCardToHand(currentPlayerIndex, debugDrawnCard);
+                Debug.Log("Drew debug scoring replacement card for " + GetPlayerDisplayName(currentPlayerIndex) + ": " + debugDrawnCard.GetDisplayName());
+                Debug.Log("Debug Scoring Reserved Draw Count: " + debugScoringReservedDrawCards.Count);
+                Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
+                return;
+            }
+
             if (deckManager.TryDrawCard(out CardData drawnCard))
             {
                 handManager.AddCardToHand(currentPlayerIndex, drawnCard);
@@ -176,6 +355,19 @@ namespace Pomoku.Core
             }
 
             Debug.Log("Remaining Deck Count: " + deckManager.RemainingCardCount);
+        }
+
+        private bool TryDrawDebugScoringReservedCard(out CardData drawnCard)
+        {
+            if (currentHandGenerationMode != HandGenerationMode.TestScoringHands || debugScoringReservedDrawCards.Count == 0)
+            {
+                drawnCard = default(CardData);
+                return false;
+            }
+
+            drawnCard = debugScoringReservedDrawCards[0];
+            debugScoringReservedDrawCards.RemoveAt(0);
+            return true;
         }
 
         private void CheckPomokuAfterChipPlacement(int placedCellIndex, TeamId teamId)
@@ -289,6 +481,13 @@ namespace Pomoku.Core
 
         private void AdvanceToNextPlayer()
         {
+            if (currentPlayMode == LocalPlayMode.DebugPlayer1Only)
+            {
+                currentPlayerIndex = 0;
+                Debug.Log("DebugPlayer1Only mode: keeping turn on Player 1.");
+                return;
+            }
+
             currentPlayerIndex++;
 
             if (currentPlayerIndex >= LocalPlayerCount)
@@ -343,6 +542,7 @@ namespace Pomoku.Core
             int totalTrackedCards = 0;
 
             totalTrackedCards += CountCards(deckManager.RemainingCards, cardCounts);
+            totalTrackedCards += CountCards(debugScoringReservedDrawCards, cardCounts);
 
             for (int playerIndex = 0; playerIndex < handManager.PlayerCount; playerIndex++)
             {

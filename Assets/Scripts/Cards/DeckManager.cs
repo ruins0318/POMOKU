@@ -49,6 +49,24 @@ namespace Pomoku.Cards
             return true;
         }
 
+        public bool TryRemoveFirstMatchingCard(CardData cardToRemove, out CardData removedCard)
+        {
+            for (int i = 0; i < deckCards.Count; i++)
+            {
+                CardData card = deckCards[i];
+
+                if (card.Suit == cardToRemove.Suit && card.Rank == cardToRemove.Rank)
+                {
+                    removedCard = card;
+                    deckCards.RemoveAt(i);
+                    return true;
+                }
+            }
+
+            removedCard = default(CardData);
+            return false;
+        }
+
         // J and Joker cards will be added later when their special effects are implemented.
     }
 }
