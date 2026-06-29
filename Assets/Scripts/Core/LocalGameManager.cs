@@ -423,10 +423,14 @@ namespace Pomoku.Core
 
         private void AddScoreForCompletedPomoku(CompletedPomokuLine completedPomokuLine)
         {
-            const int mvpPomokuScore = 1;
+            PomokuScoreResult scoreResult = ScoreRuleEvaluator.EvaluateCompletedLine(completedPomokuLine, boardManager.BoardCells);
 
-            scoreManager.AddScore(completedPomokuLine.TeamId, mvpPomokuScore);
-            Debug.Log(GetTeamDisplayName(completedPomokuLine.TeamId) + " scored " + mvpPomokuScore + " point");
+            scoreManager.AddScore(completedPomokuLine.TeamId, scoreResult.Score);
+            Debug.Log("Pomoku completed by " + GetTeamDisplayName(completedPomokuLine.TeamId));
+            Debug.Log("Hand Type: " + scoreResult.HandType);
+            Debug.Log("Score: " + scoreResult.Score);
+            Debug.Log("Cards: " + scoreResult.CardsDescription);
+            Debug.Log(GetTeamDisplayName(completedPomokuLine.TeamId) + " scored " + scoreResult.Score + " point");
             LogCurrentScore();
             UpdateScoreHud();
         }
